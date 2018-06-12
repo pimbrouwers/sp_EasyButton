@@ -15,7 +15,6 @@ go
 
 alter procedure dbo.sp_EasyButton
   @Configuration bit = 1
-  ,@TraceFlags bit = 1
   ,@FileGrowth bit = 1
   ,@TempDb bit = 1
 as
@@ -137,6 +136,36 @@ as
 
       reconfigure;
     end;
-go
 
-exec sp_EasyButton;
+  /*
+    Filegrowth
+  */
+  if @FileGrowth = 1
+    begin
+      print ('');
+      print ('-------------');
+      print ('-- FILEGROWTH');
+      print ('-------------');
+
+      print ('master (data: 256mb, log: 128mb)');
+      alter database master
+        modify file (name = 'master', filegrowth = 256mb);
+
+      alter database master
+        modify file (name = 'mastlog', filegrowth = 128mb);
+
+      print ('msdb (data: 256mb, log: 128mb)');
+      alter database msdb
+        modify file (name = 'MSDBData', filegrowth = 256mb);
+
+      alter database msdb
+        modify file (name = 'MSDBLog', filegrowth = 128mb);
+
+      print ('model (data: 256mb, log: 128mb)');
+      alter database model
+        modify file (name = 'modeldev', filegrowth = 256mb);
+
+      alter database model
+        modify file (name = 'modellog', filegrowth = 128mb);
+    end;
+go
