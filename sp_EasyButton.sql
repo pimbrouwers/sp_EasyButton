@@ -14,15 +14,24 @@ if object_id('dbo.sp_EasyButton') is null
 go
 
 alter procedure dbo.sp_EasyButton
-  @Configuration bit = 1
-  ,@FileGrowth bit = 1
-  ,@TempDb bit = 1
+  @Configure bit = 0
+  ,@FileGrowth bit = 0
+  ,@FileGrowthDataMB int = 256
+  ,@FileGrowthLogMB int = 128
+  ,@TempDb bit = 0
 as
-
   /*
-    Configuration
+  Version Detection
   */
-  if @Configuration = 1
+  declare @VersionNumber int;
+  declare @ProductVersion varchar(25) = cast(serverproperty('ProductVersion') as varchar(25));
+
+  set @VersionNumber = cast(substring(@ProductVersion, 1, charindex('.', @ProductVersion) - 1) as int);
+  
+  /*
+  Configuration
+  */
+  if @Configure = 1
     begin
       print ('----------------');
       print ('-- CONFIGURATION');
@@ -34,39 +43,34 @@ as
         N'user options'
         ,N'64';
 
-      reconfigure;
-
       -- Show Advanced Options
       -- https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/show-advanced-options-server-configuration-option      
       exec sys.sp_configure
         'show advanced options'
         ,1;
 
-      reconfigure;
-
       -- Backup Compression
+      -- 2005+ (v9.0)
+      -- This way no matter who takes the backup, it will be compressed
       -- https://www.brentozar.com/archive/2013/09/five-sql-server-settings-to-change/      
-      exec sys.sp_configure
-        'backup compression default'
-        ,'1';
-
-      reconfigure;
+      if @VersionNumber > 9
+        exec sys.sp_configure
+          'backup compression default'
+          ,'1';
 
       -- Cost Threshold for parallelism
+      -- If you see a lot of CXPACKET waits on your system together with High CPU usage, 
+      -- consider reviewing this parameter further together with the MAXDOP.
       -- https://www.brentozar.com/archive/2013/09/five-sql-server-settings-to-change/      
       exec sys.sp_configure
         'cost threshold for parallelism'
         ,'50';
 
-      reconfigure;
-
       -- Lightweight pooling
-      -- http://dataeducation.com/the-sql-hall-of-shame/      
+      -- https://docs.microsoft.com/en-us/sql/relational-databases/policy-based-management/disable-lightweight-pooling      
       exec sys.sp_configure
         'lightweight pooling'
         ,'0';
-
-      reconfigure;
 
       -- Priority Boost
       -- http://dataeducation.com/the-sql-hall-of-shame/ 
@@ -74,17 +78,17 @@ as
         'priority boost'
         ,'0';
 
-      reconfigure;
-
       -- Remote DAC
       -- https://www.brentozar.com/archive/2013/09/five-sql-server-settings-to-change/
       exec sys.sp_configure
         'remote admin connections'
         ,'1';
 
-      reconfigure;
-
       -- Maximum degrees of parallelism
+      -- Represents the number of CPU that a single query can use. A value of 0 means 
+      -- you are letting SQL Server decide how many, of which it will use all available
+      -- (up to 64). You’ll end up using all your CPUs for each and every query, if by 
+      -- chance, you didn't change the Cost Threshold for Parallelism (from the default of 5). 
       -- https://support.microsoft.com/en-ca/help/2806535/recommendations-and-guidelines-for-the-max-degree-of-parallelism-confi
       declare
         @numaNodes int
@@ -110,9 +114,10 @@ as
         'max degree of parallelism'
         ,@maxDop;
 
-      reconfigure;
-
       -- Max Server Memory (MB)
+      -- The default value is ALL of your server's memory. Yes. All. As a baseline
+      -- leave 25% for the OS (optimistic). But if the total memory available to this 
+      -- instance is > 32GB than 12.5% should be sufficient for the OS to operate.
       -- https://www.brentozar.com/blitz/max-memory/
       declare
         @systemMemory int
@@ -138,34 +143,32 @@ as
     end;
 
   /*
-    Filegrowth
+  Filegrowth
   */
   if @FileGrowth = 1
     begin
       print ('');
       print ('-------------');
-      print ('-- FILEGROWTH');
+      print ('-- FILEGROWTH (data: ' + @FileGrowthDataMB + 'MB, log: ' + @FileGrowthLogMB + 'MB)');
       print ('-------------');
+      --select * from sys.master_files
 
-      print ('master (data: 256mb, log: 128mb)');
-      alter database master
-        modify file (name = 'master', filegrowth = 256mb);
+      --alter database master
+      --  modify file (name = 'master', filegrowth = @FileGrowthDataMB);
 
-      alter database master
-        modify file (name = 'mastlog', filegrowth = 128mb);
+      --alter database master
+      --  modify file (name = 'mastlog', filegrowth = 128mb);
 
-      print ('msdb (data: 256mb, log: 128mb)');
-      alter database msdb
-        modify file (name = 'MSDBData', filegrowth = 256mb);
+      --alter database msdb
+      --  modify file (name = 'MSDBData', filegrowth = @FileGrowthDataMB);
 
-      alter database msdb
-        modify file (name = 'MSDBLog', filegrowth = 128mb);
+      --alter database msdb
+      --  modify file (name = 'MSDBLog', filegrowth = 128mb);
 
-      print ('model (data: 256mb, log: 128mb)');
-      alter database model
-        modify file (name = 'modeldev', filegrowth = 256mb);
+      --alter database model
+      --  modify file (name = 'modeldev', filegrowth = @FileGrowthDataMB);
 
-      alter database model
-        modify file (name = 'modellog', filegrowth = 128mb);
+      --alter database model
+      --  modify file (name = 'modellog', filegrowth = 128mb);
     end;
 go
