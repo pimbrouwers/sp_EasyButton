@@ -16,6 +16,7 @@ go
 alter procedure dbo.sp_EasyButton
   @Configure bit = 0
   ,@FileGrowth bit = 0
+  ,@FileGrowthSysDbs bit = 0
   ,@FileGrowthDataMB int = 256
   ,@FileGrowthLogMB int = 128
   ,@TempDb bit = 0
@@ -27,7 +28,7 @@ as
   declare @ProductVersion varchar(25) = cast(serverproperty('ProductVersion') as varchar(25));
 
   set @VersionNumber = cast(substring(@ProductVersion, 1, charindex('.', @ProductVersion) - 1) as int);
-  
+
   /*
   Configuration
   */
@@ -102,7 +103,10 @@ as
       where
         memory_node_id <> 64;
 
-      select @logicalProcessors = cpu_count from sys.dm_os_sys_info;
+      select
+        @logicalProcessors = cpu_count
+      from
+        sys.dm_os_sys_info;
 
       if @numaNodes = 1
          or @logicalProcessors < 8
@@ -148,27 +152,62 @@ as
   if @FileGrowth = 1
     begin
       print ('');
-      print ('-------------');
-      print ('-- FILEGROWTH (data: ' + @FileGrowthDataMB + 'MB, log: ' + @FileGrowthLogMB + 'MB)');
-      print ('-------------');
-      --select * from sys.master_files
+      print ('---------------------------------------');
+      print ('-- FILEGROWTH (data: ' + cast(@FileGrowthDataMB as varchar(25)) + 'MB, log: ' + cast(@FileGrowthLogMB as varchar(25)) + 'MB)');
+      print ('---------------------------------------');
 
-      --alter database master
-      --  modify file (name = 'master', filegrowth = @FileGrowthDataMB);
+      declare @sql nvarchar(max);
 
-      --alter database master
-      --  modify file (name = 'mastlog', filegrowth = 128mb);
+      ;with files as (
+        select
+          f.*
+          ,db_name(f.database_id) as dbname
+          ,p.name as ownername
+        from
+          sys.master_files f with (nolock)
+        join
+          sys.databases d with (nolock)
+          on d.database_id = f.database_id
+        join
+          sys.server_principals p with (nolock)
+          on p.sid = d.owner_sid
+      )
+      ,dbs as (
+        select
+          f.dbname
+          ,cast(f.name as varchar(128)) as filename
+          ,cast(l.logfilename as varchar(128)) as logfilename
+          ,f.ownername
+        from
+          files f
+        cross apply (
+          select
+            l.name as logfilename
+          from
+            files l
+          where
+            l.type = 1
+            and l.database_id = f.database_id
+        ) l
+        where
+          f.type = 0
+          and db_name(f.database_id) <> 'tempdb'
+      )
+      select
+        @sql = stuff((
+                       select
+                         'alter database ' + dbs.dbname + ' modify file (name = ' + dbs.filename + ', filegrowth = ' + cast(@FileGrowthDataMB as varchar(25)) + '); ' + 
+                         'alter database ' + dbs.dbname + ' modify file (name = ' + dbs.logfilename + ', filegrowth = ' + cast(@FileGrowthLogMB as varchar(25)) + '); ' +
+                         'print (''' + dbs.dbname + ''');'
+                       from
+                         dbs
+                       where
+                         @FileGrowthSysDbs = 1
+                         or dbs.ownername <> 'sa'
+                       for xml path('')
+                     ), 1, 0, ''
+               );
 
-      --alter database msdb
-      --  modify file (name = 'MSDBData', filegrowth = @FileGrowthDataMB);
-
-      --alter database msdb
-      --  modify file (name = 'MSDBLog', filegrowth = 128mb);
-
-      --alter database model
-      --  modify file (name = 'modeldev', filegrowth = @FileGrowthDataMB);
-
-      --alter database model
-      --  modify file (name = 'modellog', filegrowth = 128mb);
+      exec (@sql);
     end;
 go
