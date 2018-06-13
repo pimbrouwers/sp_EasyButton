@@ -1,26 +1,3 @@
-/*
-sp_EasyButton
-
-For when you just need an Easy Button. One-button server 
-configuration to implement commonly-accepted best practices.
-
-Credit: Pim Brouwers
-
-Source: https://github.com/pimbrouwers/sp_EasyButton
-
-License: https://github.com/pimbrouwers/sp_EasyButton/blob/master/LICENSE
-
-Parameters:
-  @Configre bit - run all sp_configure operations
-  @FileGrowth bit - adjust filegrowth
-  @FileGrowthSysDbs - include system databases (master, model, msdb)
-  @FileGrowthDataMB - MB value for data filegrowth (256 recommended)
-  @FileGrowthLogMB - MB value for log filegrowth (128 recommended)
-  @Alerts - enable alerts
-  @OperatorName - operator name for alert dispatch
-  @OperatorEmail - operator eamil for alert dispathc
-*/
-
 if object_id('dbo.sp_EasyButton') is null
   exec ('create procedure dbo.sp_EasyButton as return 0;');
 go
@@ -35,6 +12,44 @@ alter procedure dbo.sp_EasyButton
   ,@OperatorName nvarchar(100) = null
   ,@OperatorEmail nvarchar(320) = null
 as
+  /*
+  Instructions
+  */
+  if @Configure = 0
+     and @FileGrowth = 0
+     and @FileGrowthSysDbs = 0
+     and @FileGrowthDataMB = 256
+     and @FileGrowthLogMB = 128
+     and @Alerts = 0
+     and @OperatorName is null
+     and @OperatorEmail is null
+    begin
+      print '
+/*
+sp_EasyButton
+
+For when you just need an Easy Button. One-button server 
+configuration to implement commonly-accepted best practices.
+
+Credit: Pim Brouwers
+
+Source: https://github.com/pimbrouwers/sp_EasyButton
+
+License: https://github.com/pimbrouwers/sp_EasyButton/blob/master/LICENSE
+
+Parameters:
+  @Configure bit - run all sp_configure operations
+  @FileGrowth bit - adjust filegrowth
+  @FileGrowthSysDbs bit - include system databases (master, model, msdb)
+  @FileGrowthDataMB smallint - MB value for data filegrowth (256 recommended)
+  @FileGrowthLogMB smallint - MB value for log filegrowth (128 recommended)
+  @Alerts bit - enable alerts
+  @OperatorName nvarchar(100) - operator name for alert dispatch
+  @OperatorEmail nvarchar(320) - operator eamil for alert dispatch
+*/';
+      return;
+    end;
+
   /*
   Version Detection
   */
