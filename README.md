@@ -51,3 +51,19 @@ For when you just need an Easy Button. One-button server configuration to implem
 - `@Alerts bit` - enable alerts
 - `@OperatorName nvarchar(100)` - operator name for alert dispatch
 - `@OperatorEmail nvarchar(320)` - operator eamil for alert dispatch
+
+## License
+
+[sp_EasyButton uses the GNU GENERAL PUBLIC LICENSE.](LICENSE.md)
+
+[*Back to top*](#header1)
+
+[licence badge]:https://img.shields.io/badge/license-GNU-blue.svg
+[stars badge]:https://img.shields.io/github/stars/pimbrouwers/sp_EasyButton.svg
+[forks badge]:https://img.shields.io/github/forks/pimbrouwers/sp_EasyButton.svg
+[issues badge]:https://img.shields.io/github/issues/pimbrouwers/sp_EasyButton.svg
+
+[licence]:https://github.com/pimbrouwers/sp_EasyButton/blob/master/LICENSE.md
+[stars]:https://github.com/pimbrouwers/sp_EasyButton/stargazers
+[forks]:https://github.com/pimbrouwers/sp_EasyButton/network
+[issues]:https://github.com/pimbrouwers/sp_EasyButton/issues
