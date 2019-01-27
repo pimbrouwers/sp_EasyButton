@@ -66,18 +66,19 @@ Parameters:
       print ('-------------------');
       print ('-- CONFIGURATION --');
       print ('-------------------');
-
+                                                                                                          -- Show Advanced Options
+      -- https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/show-advanced-options-server-configuration-option      
+      exec sys.sp_configure
+        'show advanced options'
+        ,1;
+                                                                                                          
+      reconfigure; -- advanced options '1' required for upcoming settings
+                                                                                                          
       -- ARITHABORT
       -- https://docs.microsoft.com/en-us/sql/t-sql/statements/set-arithabort-transact-sql      
       exec sys.sp_configure
         N'user options'
         ,N'64';
-
-      -- Show Advanced Options
-      -- https://docs.microsoft.com/en-us/sql/database-engine/configure-windows/show-advanced-options-server-configuration-option      
-      exec sys.sp_configure
-        'show advanced options'
-        ,1;
 
       -- Backup Compression
       -- 2008R2+ (v10.5)
